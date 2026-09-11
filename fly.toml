@@ -1,34 +1,39 @@
-# `fly launch --no-deploy` will rewrite this name if it's taken.
-app = "familia"
-primary_region = "iad"
+# fly.toml app configuration file generated for familia-tracker on 2026-09-11T12:56:54+05:30
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'familia-tracker'
+primary_region = 'iad'
 
 [build]
-
 [env]
-  FAMILIA_DB = "/data/familia.db"
+  FAMILIA_DB = '/data/familia.db'
 
-# SQLite lives on this volume. Keep exactly one machine — two would each get
-# their own volume and silently diverge.
-[mounts]
-  source = "familia_data"
-  destination = "/data"
+[[mounts]]
+  source = 'familia_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "suspend"
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
-  [http_service.http_options.response]
-    pristine = true
 
-[[http_service.checks]]
-  grace_period = "5s"
-  interval = "30s"
-  method = "GET"
-  path = "/healthz"
-  timeout = "5s"
+  [http_service.http_options]
+    [http_service.http_options.response]
+      pristine = true
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '5s'
+    method = 'GET'
+    path = '/healthz'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256
