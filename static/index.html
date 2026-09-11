@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>familia</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="#/">familia</a>
+    <nav>
+      <a href="#/" data-nav="review">Review</a>
+      <a href="#/people" data-nav="people">People</a>
+      <a href="#/settings" data-nav="settings">Settings</a>
+    </nav>
+    <form class="search" onsubmit="return false">
+      <input type="search" id="search" placeholder="Search people and notes" autocomplete="off">
+    </form>
+  </header>
+
+  <main id="view" aria-live="polite"></main>
+
+  <button id="capture" class="fab" title="Write a note" aria-label="Write a note">+</button>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

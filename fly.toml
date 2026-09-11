@@ -1,0 +1,34 @@
+# `fly launch --no-deploy` will rewrite this name if it's taken.
+app = "familia"
+primary_region = "iad"
+
+[build]
+
+[env]
+  FAMILIA_DB = "/data/familia.db"
+
+# SQLite lives on this volume. Keep exactly one machine — two would each get
+# their own volume and silently diverge.
+[mounts]
+  source = "familia_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.http_options.response]
+    pristine = true
+
+[[http_service.checks]]
+  grace_period = "5s"
+  interval = "30s"
+  method = "GET"
+  path = "/healthz"
+  timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

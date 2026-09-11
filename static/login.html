@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>familia</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <h1 class="wordmark">familia</h1>
+    <p class="muted">The people you're keeping track of.</p>
+    <form method="post" action="/login">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+      <button type="submit">Sign in</button>
+    </form>
+    <p id="error" class="error" hidden>That password didn't work.</p>
+  </main>
+  <script>
+    if (new URLSearchParams(location.search).has('error')) {
+      document.getElementById('error').hidden = false;
+    }
+  </script>
+</body>
+</html>
