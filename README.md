@@ -9,13 +9,18 @@ computation is the whole product; everything else is storage.
 
 | Entity | What it holds |
 |---|---|
-| **Person** | The portrait. Basics (birthday, where they live, family) and character notes — quirks, what they care about, how to be good to them. |
+| **Person** | The portrait. A circle (family / friend / other), basics (birthday, where they live, family) and character notes — quirks, what they care about, how to be good to them. |
 | **Thread** | An open situation in their life you want to stay on top of. Written once, closed when it resolves. |
 | **Log entry** | A timestamped note, optionally filed against a thread. The only thing you write often. |
 | **Event** | A date. One-off (an appointment) or yearly (an anniversary). Birthdays come from the person record, not from events. |
 
 No habit trackers, no per-person contact frequency to configure. Both add
 friction faster than they add value.
+
+The People list shows a running count — `12 people · 5 family · 6 friends · 1 other`
+— and checkboxes to filter by circle. Anyone you haven't sorted yet counts as
+"other", so nobody disappears from the list. The filter choice is remembered in
+the browser.
 
 ## The weekly review
 

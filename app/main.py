@@ -38,9 +38,13 @@ Guard = Annotated[None, Depends(auth.require_auth)]
 # --- schemas --------------------------------------------------------------
 
 
+Circle = Literal["family", "friend", "other", ""]
+
+
 class PersonIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     relationship: str = ""
+    circle: Circle = ""
     birth_year: int | None = None
     birth_month: int | None = Field(default=None, ge=1, le=12)
     birth_day: int | None = Field(default=None, ge=1, le=31)
@@ -60,6 +64,7 @@ class PersonIn(BaseModel):
 class PersonPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     relationship: str | None = None
+    circle: Circle | None = None
     birth_year: int | None = None
     birth_month: int | None = Field(default=None, ge=1, le=12)
     birth_day: int | None = Field(default=None, ge=1, le=31)
@@ -197,12 +202,12 @@ def create_person(_: Guard, payload: PersonIn):
     with db.cursor() as conn:
         cur = conn.execute(
             """
-            INSERT INTO person (name, relationship, birth_year, birth_month, birth_day,
+            INSERT INTO person (name, relationship, circle, birth_year, birth_month, birth_day,
                                 location, basics, character_notes, archived, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                payload.name.strip(), payload.relationship, payload.birth_year,
+                payload.name.strip(), payload.relationship, payload.circle, payload.birth_year,
                 payload.birth_month, payload.birth_day, payload.location,
                 payload.basics, payload.character_notes, int(payload.archived), stamp, stamp,
             ),

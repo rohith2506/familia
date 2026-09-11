@@ -4,6 +4,13 @@
 import { api } from "./api.js";
 import { html, raw, modal, toast, todayISO, confirmDelete } from "./ui.js";
 
+export const CIRCLES = [
+  { value: "family", label: "Family" },
+  { value: "friend", label: "Friend" },
+  { value: "other", label: "Other" },
+  { value: "", label: "Unsorted" },
+];
+
 const MONTH_OPTIONS = ["January", "February", "March", "April", "May", "June", "July",
                        "August", "September", "October", "November", "December"];
 
@@ -90,6 +97,16 @@ export function openPerson({ person = null, onDone }) {
       <label for="name">Name</label>
       <input id="name" name="name" type="text" required value="${v.name ?? ""}">
 
+      <label>Circle</label>
+      <div class="choices">
+        ${raw(CIRCLES.map((c) => html`
+          <label class="choice">
+            <input type="radio" name="circle" value="${c.value}"
+                   ${(v.circle ?? "") === c.value ? raw("checked") : ""}>
+            <span>${c.label}</span>
+          </label>`).join(""))}
+      </div>
+
       <div class="grid-2">
         <div>
           <label for="relationship">Relationship</label>
@@ -129,6 +146,7 @@ export function openPerson({ person = null, onDone }) {
       const payload = {
         name: data.get("name").trim(),
         relationship: data.get("relationship"),
+        circle: data.get("circle") ?? "",
         location: data.get("location"),
         birth_month: num("birth_month"),
         birth_day: num("birth_day"),

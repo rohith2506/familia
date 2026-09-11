@@ -4,6 +4,8 @@ import { api } from "../api.js";
 import { html, raw, initials, fmtDate, fmtDayLabel, parseISO, todayISO, toast, confirmDelete } from "../ui.js";
 import { openNote, openPerson, openThread, openEvent } from "../forms.js";
 
+const CIRCLE_LABELS = { family: "Family", friend: "Friend", other: "Other" };
+
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
                 "August", "September", "October", "November", "December"];
 
@@ -92,7 +94,10 @@ export async function render(mount, personId) {
     <div class="portrait-head">
       <div class="avatar">${initials(person.name)}</div>
       <div style="flex:1 1 auto;min-width:0">
-        <h1>${person.name}</h1>
+        <div class="row" style="gap:8px">
+          <h1>${person.name}</h1>
+          ${person.circle ? raw(html`<span class="pill">${CIRCLE_LABELS[person.circle]}</span>`) : ""}
+        </div>
         <p class="muted" style="font-size:.9rem">${facts || "No details yet"}</p>
       </div>
       <button class="ghost" id="edit-person">Edit</button>

@@ -76,6 +76,11 @@ MIGRATIONS: list[str] = [
         value TEXT NOT NULL
     );
     """,
+    # Which circle someone belongs to. '' means not yet sorted, and the UI
+    # groups those with 'other' so nobody silently disappears from the list.
+    """
+    ALTER TABLE person ADD COLUMN circle TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 

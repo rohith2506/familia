@@ -344,3 +344,32 @@ button.tiny { padding: 4px 9px; font-size: .8rem; }
 .login-card .wordmark { font-size: 1.4rem; display: block; margin-bottom: 2px; }
 .login-card button { width: 100%; margin-top: 16px; }
 .login-card .error { margin-top: 12px; font-size: .9rem; }
+
+/* --- choice chips (circle radios, people filters) ---------------------- */
+
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: .87rem;
+  color: var(--ink-2);
+  user-select: none;
+}
+.choice:hover { border-color: var(--accent); }
+.choice input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+.choice:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.choice:has(input:checked) .muted { color: inherit; opacity: .7; }
+
+.filters { margin-bottom: 16px; }
