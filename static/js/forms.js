@@ -11,6 +11,16 @@ export const CIRCLES = [
   { value: "", label: "Unsorted" },
 ];
 
+export const RECURRENCES = [
+  { value: "none", label: "Once" },
+  { value: "daily", label: "Every day" },
+  { value: "weekly", label: "Every week" },
+  { value: "biweekly", label: "Every two weeks" },
+  { value: "monthly", label: "Every month" },
+  { value: "quarterly", label: "Every quarter" },
+  { value: "yearly", label: "Every year" },
+];
+
 const MONTH_OPTIONS = ["January", "February", "March", "April", "May", "June", "July",
                        "August", "September", "October", "November", "December"];
 
@@ -204,8 +214,9 @@ export function openEvent({ personId, threads = [], event = null, onDone }) {
         <div>
           <label for="recurrence">Repeats</label>
           <select id="recurrence" name="recurrence">
-            <option value="none" ${event?.recurrence === "yearly" ? "" : raw("selected")}>Once</option>
-            <option value="yearly" ${event?.recurrence === "yearly" ? raw("selected") : ""}>Every year</option>
+            ${raw(RECURRENCES.map((r) => html`
+              <option value="${r.value}"
+                ${(event?.recurrence ?? "none") === r.value ? raw("selected") : ""}>${r.label}</option>`).join(""))}
           </select>
         </div>
       </div>
@@ -214,6 +225,8 @@ export function openEvent({ personId, threads = [], event = null, onDone }) {
         <div>
           <label for="lead">Warn me this many days ahead</label>
           <input id="lead" name="lead_days" type="number" min="0" max="365" value="${event?.lead_days ?? 7}">
+          <p class="muted" style="font-size:.78rem;margin-top:4px">Capped below the repeat interval, so a
+             daily or weekly date doesn't sit in the review permanently.</p>
         </div>
         <div>
           <label for="thread">Related thread</label>

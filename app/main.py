@@ -91,10 +91,13 @@ class EntryIn(BaseModel):
     thread_id: int | None = None
 
 
+Recurrence = Literal["none", "daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"]
+
+
 class EventIn(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     on_date: date
-    recurrence: Literal["none", "yearly"] = "none"
+    recurrence: Recurrence = "none"
     lead_days: int = Field(default=7, ge=0, le=365)
     notes: str = ""
     thread_id: int | None = None
@@ -103,7 +106,7 @@ class EventIn(BaseModel):
 class EventPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=300)
     on_date: date | None = None
-    recurrence: Literal["none", "yearly"] | None = None
+    recurrence: Recurrence | None = None
     lead_days: int | None = Field(default=None, ge=0, le=365)
     notes: str | None = None
     thread_id: int | None = None

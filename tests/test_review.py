@@ -11,7 +11,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db import MIGRATIONS
-from app.review import build_review, dismiss, _next_occurrence, _safe_date
+from app.review import (build_review, dismiss, _next_occurrence, _safe_date,
+                        next_occurrence, effective_lead, _add_months)
 
 TODAY = date(2026, 6, 15)
 FAILURES = []
@@ -90,6 +91,88 @@ check("a birthday already passed rolls to next year",
       _next_occurrence(1, 3, TODAY) == date(2027, 1, 3))
 check("a birthday today counts as today",
       _next_occurrence(6, 15, TODAY) == date(2026, 6, 15))
+
+print("\nrecurring dates")
+D = date
+
+def occ(anchor, rec, today=TODAY):
+    return next_occurrence(anchor, rec, today)
+
+check("a one-off in the future stands", occ(D(2026, 6, 20), "none") == D(2026, 6, 20))
+check("a one-off in the past is gone", occ(D(2026, 6, 1), "none") is None)
+check("daily lands on today", occ(D(2026, 1, 1), "daily") == TODAY)
+check("a future anchor wins over the interval", occ(D(2026, 8, 1), "daily") == D(2026, 8, 1))
+check("weekly keeps the anchor's weekday",
+      occ(D(2026, 6, 1), "weekly") == D(2026, 6, 15) and D(2026, 6, 1).weekday() == D(2026, 6, 15).weekday())
+check("weekly landing exactly on today stays today", occ(D(2026, 6, 8), "weekly") == TODAY)
+check("fortnightly steps by 14", occ(D(2026, 6, 1), "biweekly") == D(2026, 6, 15))
+check("fortnightly does not collapse to weekly", occ(D(2026, 6, 2), "biweekly") == D(2026, 6, 16))
+check("monthly rolls to the next month", occ(D(2026, 5, 20), "monthly") == D(2026, 6, 20))
+check("monthly on today stays today", occ(D(2026, 5, 15), "monthly") == TODAY)
+check("quarterly steps three months", occ(D(2026, 5, 10), "quarterly") == D(2026, 8, 10))
+check("yearly rolls a full year", occ(D(2026, 6, 1), "yearly") == D(2027, 6, 1))
+
+print("\nmonth-end clamping")
+check("the 31st clamps to 30 in a short month",
+      occ(D(2026, 3, 31), "monthly", D(2026, 9, 14)) == D(2026, 9, 30))
+check("the 31st clamps to 28 in February",
+      occ(D(2026, 1, 31), "monthly", D(2026, 2, 1)) == D(2026, 2, 28))
+check("and then springs back to 31 — no drift",
+      occ(D(2026, 1, 31), "monthly", D(2026, 3, 1)) == D(2026, 3, 31))
+check("_add_months is measured from the anchor every time",
+      [_add_months(D(2026, 1, 31), n) for n in (1, 2, 3)]
+      == [D(2026, 2, 28), D(2026, 3, 31), D(2026, 4, 30)])
+check("Feb 29 anchor clamps in a common year",
+      occ(D(2024, 2, 29), "yearly", D(2027, 1, 1)) == D(2027, 2, 28))
+
+print("\nlead times are capped below the interval")
+check("daily shows only on the day", effective_lead("daily", 7) == 0)
+check("weekly caps at 6", effective_lead("weekly", 30) == 6)
+check("fortnightly caps at 13", effective_lead("biweekly", 30) == 13)
+check("monthly caps at 27", effective_lead("monthly", 90) == 27)
+check("a modest lead is left alone", effective_lead("monthly", 7) == 7)
+check("yearly is uncapped", effective_lead("yearly", 60) == 60)
+check("a one-off is uncapped", effective_lead("none", 60) == 60)
+
+print("\nrepeats in the review")
+conn = fresh_db()
+p1 = add_person(conn, "Mom")
+add_event(conn, p1, "Daily walk check", (TODAY - timedelta(days=90)).isoformat(),
+          recurrence="daily", lead_days=7)
+r = build_review(conn, TODAY)
+check("a daily repeat surfaces exactly once", titles(r).count("Daily walk check") == 1)
+check("and it is dated today", r["items"][0]["days_until"] == 0)
+check("the item declares its recurrence", r["items"][0]["recurrence"] == "daily")
+
+conn = fresh_db()
+p1 = add_person(conn, "Mom")
+add_event(conn, p1, "Weekly call", (TODAY - timedelta(days=70)).isoformat(),
+          recurrence="weekly", lead_days=7)
+r = build_review(conn, TODAY)
+check("a weekly repeat is inside its capped lead", "Weekly call" in titles(r))
+check("weekly is at most 6 days out", r["items"][0]["days_until"] <= 6)
+
+conn = fresh_db()
+p1 = add_person(conn, "Mom")
+add_event(conn, p1, "Quarterly review", (TODAY + timedelta(days=40)).isoformat(),
+          recurrence="quarterly", lead_days=7)
+check("a far-off quarterly stays quiet", build_review(conn, TODAY)["items"] == [])
+
+print("\ndone semantics")
+conn = fresh_db()
+p1 = add_person(conn, "Mom")
+one_off = add_event(conn, p1, "Scan", (TODAY + timedelta(days=2)).isoformat())
+repeating = add_event(conn, p1, "Monthly BP", TODAY.isoformat(), recurrence="monthly", lead_days=3)
+conn.execute("UPDATE event SET done_at = ? WHERE id = ?", (TODAY.isoformat(), one_off))
+conn.execute("UPDATE event SET done_at = ? WHERE id = ?", (TODAY.isoformat(), repeating))
+r = build_review(conn, TODAY)
+check("done retires a one-off", "Scan" not in titles(r))
+check("done does NOT retire a repeat", "Monthly BP" in titles(r))
+key = next(i["key"] for i in r["items"] if i["title"] == "Monthly BP")
+dismiss(conn, key, 1, TODAY)
+check("dismissing clears this occurrence", "Monthly BP" not in titles(build_review(conn, TODAY)))
+check("the next occurrence still comes",
+      "Monthly BP" in titles(build_review(conn, TODAY + timedelta(days=30))))
 
 # --- birthdays ------------------------------------------------------------
 

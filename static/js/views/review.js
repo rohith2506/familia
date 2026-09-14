@@ -39,7 +39,10 @@ function itemMarkup(item) {
                   data-person="${item.person_id}" data-name="${item.person_name}">Write a note</button>
           <button class="link" data-act="snooze">Snooze a week</button>
           ${item.event_id && item.kind === "dated"
-            ? raw(html`<button class="link" data-act="done" data-event="${item.event_id}">Mark done</button>`)
+            ? raw(html`<button class="link" data-act="done" data-event="${item.event_id}"
+                               data-recurrence="${item.recurrence}"
+                               data-days="${item.days_until}">${
+                 item.recurrence === "none" ? "Mark done" : "Done this time"}</button>`)
             : ""}
         </div>
       </div>
@@ -101,9 +104,16 @@ export async function render(mount) {
         card.remove();
         toast("Snoozed for a week");
       } else if (button.dataset.act === "done") {
-        await api.updateEvent(Number(button.dataset.event), { done: true });
+        // A one-off is retired for good. A repeat is never finished, so only
+        // this occurrence is cleared — the key already names its date.
+        if (button.dataset.recurrence === "none") {
+          await api.updateEvent(Number(button.dataset.event), { done: true });
+          toast("Marked done");
+        } else {
+          await api.dismiss(key, Number(button.dataset.days) + 1);
+          toast("Cleared until the next one");
+        }
         card.remove();
-        toast("Marked done");
       }
     } catch (err) {
       toast(err.message);

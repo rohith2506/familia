@@ -61,6 +61,54 @@ export function fmtDayLabel(iso) {
   return `in ${days}d`;
 }
 
+// Mirrors app/review.py — the portrait shows the same next date the weekly
+// review computed, so the two screens never disagree.
+const STEP_DAYS = { daily: 1, weekly: 7, biweekly: 14 };
+const STEP_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
+
+export const RECURRENCE_LABELS = {
+  daily: "daily", weekly: "weekly", biweekly: "fortnightly",
+  monthly: "monthly", quarterly: "quarterly", yearly: "yearly",
+};
+
+const toISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function addMonths(anchor, months) {
+  const total = anchor.getMonth() + months;
+  const year = anchor.getFullYear() + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  // Clamp to the last valid day, the way Python's _safe_date does.
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(anchor.getDate(), lastDay));
+}
+
+/** Next date this event falls, or null for a one-off already past. */
+export function nextOccurrence(onDate, recurrence) {
+  const anchor = parseISO(onDate);
+  const today = parseISO(todayISO());
+  const isDay = recurrence in STEP_DAYS;
+  const isMonth = recurrence in STEP_MONTHS;
+
+  if (!isDay && !isMonth) return anchor >= today ? toISO(anchor) : null;
+  if (anchor >= today) return toISO(anchor);
+
+  if (isDay) {
+    const step = STEP_DAYS[recurrence];
+    const elapsed = Math.round((today - anchor) / 86400000);
+    const next = new Date(anchor);
+    next.setDate(next.getDate() + Math.ceil(elapsed / step) * step);
+    return toISO(next);
+  }
+
+  const step = STEP_MONTHS[recurrence];
+  const months = (today.getFullYear() - anchor.getFullYear()) * 12 + (today.getMonth() - anchor.getMonth());
+  let n = Math.max(0, Math.floor(months / step) * step);
+  let candidate = addMonths(anchor, n);
+  while (candidate < today) candidate = addMonths(anchor, (n += step));
+  return toISO(candidate);
+}
+
 export const initials = (name) =>
   String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 

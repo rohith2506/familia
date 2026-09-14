@@ -1,7 +1,8 @@
 // The portrait: everything about one person on a single screen.
 
 import { api } from "../api.js";
-import { html, raw, initials, fmtDate, fmtDayLabel, parseISO, todayISO, toast, confirmDelete } from "../ui.js";
+import { html, raw, initials, fmtDate, fmtDayLabel, parseISO, todayISO, toast, confirmDelete,
+         nextOccurrence, RECURRENCE_LABELS } from "../ui.js";
 import { openNote, openPerson, openThread, openEvent } from "../forms.js";
 
 const CIRCLE_LABELS = { family: "Family", friend: "Friend", other: "Other" };
@@ -18,16 +19,6 @@ function birthdayLine(person) {
   let next = new Date(today.getFullYear(), person.birth_month - 1, person.birth_day);
   if (next < parseISO(todayISO())) next = new Date(today.getFullYear() + 1, person.birth_month - 1, person.birth_day);
   return `Birthday ${label} · turning ${next.getFullYear() - person.birth_year}`;
-}
-
-function nextOccurrence(event) {
-  const on = parseISO(event.on_date);
-  if (event.recurrence !== "yearly") return event.on_date;
-  const today = parseISO(todayISO());
-  const year = new Date(today.getFullYear(), on.getMonth(), on.getDate()) >= today
-    ? today.getFullYear()
-    : today.getFullYear() + 1;
-  return `${year}-${String(on.getMonth() + 1).padStart(2, "0")}-${String(on.getDate()).padStart(2, "0")}`;
 }
 
 function threadMarkup(thread) {
@@ -47,13 +38,15 @@ function threadMarkup(thread) {
 }
 
 function eventMarkup(event) {
-  const when = nextOccurrence(event);
-  const past = event.recurrence === "none" && (event.done_at || parseISO(when) < parseISO(todayISO()));
+  const when = nextOccurrence(event.on_date, event.recurrence);
+  const past = when === null || (event.recurrence === "none" && event.done_at);
+  const shown = when ?? event.on_date;
+  const label = RECURRENCE_LABELS[event.recurrence];
   return html`
     <div class="date-row" data-event="${event.id}" style="${past ? "opacity:.55" : ""}">
-      <div class="d">${fmtDate(when)}<br><span style="font-size:.75rem">${past ? "past" : fmtDayLabel(when)}</span></div>
+      <div class="d">${fmtDate(shown)}<br><span style="font-size:.75rem">${past ? "past" : fmtDayLabel(shown)}</span></div>
       <div style="flex:1 1 auto;min-width:0">
-        <div>${event.title}${event.recurrence === "yearly" ? raw(' <span class="pill">yearly</span>') : ""}</div>
+        <div>${event.title}${label ? raw(html` <span class="pill">${label}</span>`) : ""}</div>
         ${event.notes ? raw(html`<div class="muted" style="font-size:.85rem">${event.notes}</div>`) : ""}
       </div>
       <button class="link" data-act="event-edit" data-id="${event.id}">Edit</button>
@@ -86,9 +79,11 @@ export async function render(mount, personId) {
   const birthday = birthdayLine(person);
   const facts = [person.relationship, person.location, birthday].filter(Boolean).join(" · ");
 
+  // Past one-offs sort to the bottom rather than vanishing from the portrait.
   const upcoming = person.events
-    .map((e) => ({ ...e, _when: nextOccurrence(e) }))
-    .sort((a, b) => a._when.localeCompare(b._when));
+    .map((e) => ({ ...e, _when: nextOccurrence(e.on_date, e.recurrence) }))
+    .sort((a, b) => (a._when ?? "9999").localeCompare(b._when ?? "9999")
+                 || a.on_date.localeCompare(b.on_date));
 
   mount.innerHTML = html`
     <div class="portrait-head">

@@ -36,6 +36,52 @@ def _next_occurrence(month: int, day: int, today: date) -> date:
     return _safe_date(today.year + 1, month, day)
 
 
+# How each repeat advances: by whole days, or by whole months (which clamp to
+# the end of a short month — the 31st becomes the 28th in February, and then
+# back to the 31st in March, because every step is measured from the anchor).
+STEP_DAYS = {"daily": 1, "weekly": 7, "biweekly": 14}
+STEP_MONTHS = {"monthly": 1, "quarterly": 3, "yearly": 12}
+
+# Roughly how far apart two occurrences are. Used to stop a short repeat from
+# sitting in the review permanently: a lead time is capped just under its own
+# interval, so a daily date appears on the day rather than every day.
+INTERVAL_DAYS = {"daily": 1, "weekly": 7, "biweekly": 14, "monthly": 28, "quarterly": 89}
+
+
+def _add_months(anchor: date, months: int) -> date:
+    total = anchor.month - 1 + months
+    return _safe_date(anchor.year + total // 12, total % 12 + 1, anchor.day)
+
+
+def next_occurrence(anchor: date, recurrence: str, today: date) -> date | None:
+    """When this event next falls, or None if it is a one-off already past."""
+    if recurrence not in STEP_DAYS and recurrence not in STEP_MONTHS:
+        return anchor if anchor >= today else None
+    if anchor >= today:
+        return anchor
+
+    if recurrence in STEP_DAYS:
+        step = STEP_DAYS[recurrence]
+        elapsed = (today - anchor).days
+        return anchor + timedelta(days=-(-elapsed // step) * step)
+
+    step = STEP_MONTHS[recurrence]
+    months = (today.year - anchor.year) * 12 + (today.month - anchor.month)
+    n = max(0, (months // step) * step)
+    candidate = _add_months(anchor, n)
+    while candidate < today:
+        n += step
+        candidate = _add_months(anchor, n)
+    return candidate
+
+
+def effective_lead(recurrence: str, lead_days: int) -> int:
+    """Never let a lead time reach its own repeat interval, or the item would
+    be showing every single day it exists."""
+    interval = INTERVAL_DAYS.get(recurrence)
+    return lead_days if interval is None else min(lead_days, interval - 1)
+
+
 def _days_word(n: int) -> str:
     if n == 0:
         return "today"
@@ -102,16 +148,20 @@ def build_review(conn: sqlite3.Connection, today: date | None = None) -> dict:
         if person is None:
             continue
 
-        on_date = date.fromisoformat(event["on_date"])
-        if event["recurrence"] == "yearly":
-            occurrence = _next_occurrence(on_date.month, on_date.day, today)
-        else:
-            if event["done_at"] or on_date < today:
-                continue
-            occurrence = on_date
+        anchor = date.fromisoformat(event["on_date"])
+        recurrence = event["recurrence"]
+
+        # done_at retires a one-off for good. A repeat is never "finished", so
+        # a handled occurrence is cleared through the dismissal table instead.
+        if recurrence == "none" and event["done_at"]:
+            continue
+
+        occurrence = next_occurrence(anchor, recurrence, today)
+        if occurrence is None:
+            continue
 
         days_until = (occurrence - today).days
-        lead = max(event["lead_days"], 0)
+        lead = effective_lead(recurrence, max(event["lead_days"], 0))
         if days_until > min(lead, horizon):
             continue
 
@@ -134,6 +184,7 @@ def build_review(conn: sqlite3.Connection, today: date | None = None) -> dict:
                 "days_until": days_until,
                 "when": _days_word(days_until),
                 "event_id": event["id"],
+                "recurrence": recurrence,
                 "thread_id": event["thread_id"],
             }
         )
@@ -163,6 +214,7 @@ def build_review(conn: sqlite3.Connection, today: date | None = None) -> dict:
                 "days_until": days_until,
                 "when": _days_word(days_until),
                 "event_id": None,
+                "recurrence": "yearly",
                 "thread_id": None,
             }
         )
